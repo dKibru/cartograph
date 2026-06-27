@@ -1,0 +1,26 @@
+{
+  "name": "cartograph",
+  "version": "0.1.0",
+  "description": "Codebase sensemaking for AI-native developers.",
+  "type": "module",
+  "bin": {
+    "cartograph": "./bin/cartograph.js"
+  },
+  "scripts": {
+    "scan": "node ./bin/cartograph.js scan .",
+    "serve": "node ./bin/cartograph.js serve .",
+    "test": "node ./bin/cartograph.js scan . --out .cartograph-test --quiet"
+  },
+  "keywords": [
+    "ai",
+    "codebase",
+    "visualization",
+    "architecture",
+    "developer-tools"
+  ],
+  "author": "Kibru Demeke",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  }
+}
