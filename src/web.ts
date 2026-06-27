@@ -1,4 +1,6 @@
-export function renderHtml(atlas) {
+import type { Atlas, RenderGraph } from "./types.ts";
+
+export function renderHtml(atlas: Atlas): string {
   const graph = JSON.stringify(toGraph(atlas));
 
   return `<!doctype html>
@@ -202,7 +204,7 @@ export function renderHtml(atlas) {
 </html>`;
 }
 
-function toGraph(atlas) {
+function toGraph(atlas: Atlas): RenderGraph {
   const nodes = atlas.modules.slice(0, 40).map((module) => ({
     id: module.name,
     label: module.name,
@@ -215,8 +217,8 @@ function toGraph(atlas) {
   }));
   const nodeIds = new Set(nodes.map((node) => node.id));
   const fileToModule = new Map(atlas.files.map((file) => [file.path, file.module]));
-  const seen = new Set();
-  const edges = [];
+  const seen = new Set<string>();
+  const edges: RenderGraph["edges"] = [];
 
   for (const edge of atlas.edges) {
     if (edge.kind !== "internal-import") continue;
@@ -236,7 +238,7 @@ function toGraph(atlas) {
   };
 }
 
-function escapeHtml(value) {
+function escapeHtml(value: unknown): string {
   const entities = {
     "&": "&amp;",
     "<": "&lt;",

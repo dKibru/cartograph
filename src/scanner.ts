@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import type { Atlas, EdgeRecord, FileRecord, Hotspot, ModuleSummary, PathAlias, RouteInfo, SourceFile } from "./types.ts";
 
 const supportedExtensions = new Set([
   ".js",
@@ -28,12 +29,12 @@ const ignoredDirectories = new Set([
   "vendor"
 ]);
 
-export async function scanRepo(repoRoot) {
+export async function scanRepo(repoRoot: string): Promise<Atlas> {
   const startedAt = new Date().toISOString();
   const files = await collectFiles(repoRoot);
   const aliases = await loadAliases(repoRoot);
-  const records = [];
-  const byRelativePath = new Map();
+  const records: FileRecord[] = [];
+  const byRelativePath = new Map<string, FileRecord>();
 
   for (const file of files) {
     const content = await fs.readFile(file.absolutePath, "utf8");
@@ -42,7 +43,7 @@ export async function scanRepo(repoRoot) {
     byRelativePath.set(record.path, record);
   }
 
-  const edges = [];
+  const edges: EdgeRecord[] = [];
   for (const record of records) {
     for (const specifier of record.imports) {
       const target = resolveImport(record.path, specifier, byRelativePath, aliases);
@@ -83,10 +84,10 @@ export async function scanRepo(repoRoot) {
   };
 }
 
-async function collectFiles(repoRoot) {
-  const result = [];
+async function collectFiles(repoRoot: string): Promise<SourceFile[]> {
+  const result: SourceFile[] = [];
 
-  async function walk(directory) {
+  async function walk(directory: string): Promise<void> {
     const entries = await fs.readdir(directory, { withFileTypes: true });
     for (const entry of entries) {
       const absolutePath = path.join(directory, entry.name);
@@ -110,7 +111,7 @@ async function collectFiles(repoRoot) {
   return result.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
 }
 
-function analyzeFile(repoRoot, absolutePath, content) {
+function analyzeFile(repoRoot: string, absolutePath: string, content: string): FileRecord {
   const relativePath = normalizePath(path.relative(repoRoot, absolutePath));
   const imports = extractImports(content);
   const exports = extractExports(content);
@@ -129,8 +130,8 @@ function analyzeFile(repoRoot, absolutePath, content) {
   };
 }
 
-function extractImports(content) {
-  const imports = new Set();
+function extractImports(content: string): string[] {
+  const imports = new Set<string>();
   const patterns = [
     /\bimport\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?["']([^"']+)["']/g,
     /\bexport\s+(?:type\s+)?[\s\S]*?\s+from\s+["']([^"']+)["']/g,
@@ -141,8 +142,9 @@ function extractImports(content) {
   for (const pattern of patterns) {
     let match;
     while ((match = pattern.exec(content))) {
-      if (isUsefulImportSpecifier(match[1])) {
-        imports.add(match[1]);
+      const specifier = match[1];
+      if (specifier && isUsefulImportSpecifier(specifier)) {
+        imports.add(specifier);
       }
     }
   }
@@ -150,15 +152,15 @@ function extractImports(content) {
   return [...imports].sort();
 }
 
-function isUsefulImportSpecifier(specifier) {
+function isUsefulImportSpecifier(specifier: string): boolean {
   if (!specifier) return false;
   if (specifier.includes("${")) return false;
   if (specifier.startsWith("file:")) return false;
   return true;
 }
 
-function extractExports(content) {
-  const exports = new Set();
+function extractExports(content: string): string[] {
+  const exports = new Set<string>();
   const patterns = [
     /\bexport\s+(?:async\s+)?function\s+([A-Za-z0-9_$]+)/g,
     /\bexport\s+(?:const|let|var|class)\s+([A-Za-z0-9_$]+)/g,
@@ -168,7 +170,8 @@ function extractExports(content) {
   for (const pattern of patterns) {
     let match;
     while ((match = pattern.exec(content))) {
-      exports.add(match[1]);
+      const exportName = match[1];
+      if (exportName) exports.add(exportName);
     }
   }
 
@@ -179,8 +182,8 @@ function extractExports(content) {
   return [...exports].sort();
 }
 
-function extractRoutes(relativePath, content) {
-  const routes = [];
+function extractRoutes(relativePath: string, content: string): RouteInfo[] {
+  const routes: RouteInfo[] = [];
   const routePatterns = [
     /\b(?:app|router)\.(get|post|put|patch|delete)\(["'`]([^"'`]+)["'`]/g,
     /\b(?:GET|POST|PUT|PATCH|DELETE)\s*=/g
@@ -188,7 +191,11 @@ function extractRoutes(relativePath, content) {
 
   let match;
   while ((match = routePatterns[0].exec(content))) {
-    routes.push({ method: match[1].toUpperCase(), path: match[2] });
+    const method = match[1];
+    const routePath = match[2];
+    if (method && routePath) {
+      routes.push({ method: method.toUpperCase(), path: routePath });
+    }
   }
 
   if (/(^|\/)(route|page)\.(js|jsx|ts|tsx)$/.test(relativePath)) {
@@ -202,8 +209,8 @@ function extractRoutes(relativePath, content) {
   return dedupeObjects(routes);
 }
 
-function inferRoles(relativePath, content, routes) {
-  const roles = new Set();
+function inferRoles(relativePath: string, content: string, routes: RouteInfo[]): string[] {
+  const roles = new Set<string>();
   const lower = relativePath.toLowerCase();
   const searchableContent = stripRegexLiterals(content);
 
@@ -221,7 +228,7 @@ function inferRoles(relativePath, content, routes) {
   return [...roles].sort();
 }
 
-function inferModule(relativePath) {
+function inferModule(relativePath: string): string {
   const parts = relativePath.split("/");
   if (parts[0] === "apps" && parts.length > 1) return parts.slice(0, 2).join("/");
   if (parts[0] === "packages" && parts.length > 1) return parts.slice(0, 2).join("/");
@@ -230,11 +237,11 @@ function inferModule(relativePath) {
   return parts[0] ?? ".";
 }
 
-function stripRegexLiterals(content) {
+function stripRegexLiterals(content: string): string {
   return content.replace(/\/(?:\\.|[^/\\\n])+\/[dgimsuy]*/g, "");
 }
 
-function inferRoutePath(relativePath) {
+function inferRoutePath(relativePath: string): string {
   return `/${relativePath
     .replace(/\.(js|jsx|ts|tsx)$/, "")
     .replace(/(^|\/)(app|pages|src\/app)\//, "")
@@ -242,7 +249,7 @@ function inferRoutePath(relativePath) {
     .replace(/\[([^\]]+)\]/g, ":$1")}`;
 }
 
-function resolveImport(fromPath, specifier, byRelativePath, aliases) {
+function resolveImport(fromPath: string, specifier: string, byRelativePath: Map<string, FileRecord>, aliases: PathAlias[]): string | null {
   if (!specifier.startsWith(".")) {
     const aliasTarget = resolveAlias(specifier, byRelativePath, aliases);
     return aliasTarget;
@@ -266,21 +273,27 @@ function resolveImport(fromPath, specifier, byRelativePath, aliases) {
   return candidates.find((candidate) => byRelativePath.has(candidate)) ?? null;
 }
 
-async function loadAliases(repoRoot) {
+async function loadAliases(repoRoot: string): Promise<PathAlias[]> {
   const configs = ["tsconfig.json", "jsconfig.json"];
 
   for (const config of configs) {
     try {
       const content = await fs.readFile(path.join(repoRoot, config), "utf8");
-      const parsed = JSON.parse(stripJsonComments(content));
+      const parsed = JSON.parse(stripJsonComments(content)) as {
+        compilerOptions?: {
+          baseUrl?: string;
+          paths?: Record<string, unknown>;
+        };
+      };
       const compilerOptions = parsed.compilerOptions ?? {};
       const baseUrl = normalizePath(compilerOptions.baseUrl ?? ".");
       const paths = compilerOptions.paths ?? {};
-      const aliases = [];
+      const aliases: PathAlias[] = [];
 
       for (const [pattern, targets] of Object.entries(paths)) {
         if (!Array.isArray(targets)) continue;
         for (const target of targets) {
+          if (typeof target !== "string") continue;
           aliases.push({
             pattern,
             target: normalizePath(path.join(baseUrl, target))
@@ -297,7 +310,7 @@ async function loadAliases(repoRoot) {
   return [];
 }
 
-function resolveAlias(specifier, byRelativePath, aliases) {
+function resolveAlias(specifier: string, byRelativePath: Map<string, FileRecord>, aliases: PathAlias[]): string | null {
   for (const alias of aliases) {
     const starIndex = alias.pattern.indexOf("*");
     if (starIndex === -1 && specifier === alias.pattern) {
@@ -319,7 +332,7 @@ function resolveAlias(specifier, byRelativePath, aliases) {
   return null;
 }
 
-function resolveCandidate(base, byRelativePath) {
+function resolveCandidate(base: string, byRelativePath: Map<string, FileRecord>): string | null {
   const normalized = normalizePath(base);
   const candidates = [
     normalized,
@@ -338,14 +351,14 @@ function resolveCandidate(base, byRelativePath) {
   return candidates.find((candidate) => byRelativePath.has(candidate)) ?? null;
 }
 
-function stripJsonComments(content) {
+function stripJsonComments(content: string): string {
   return content
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/(^|\s)\/\/.*$/gm, "");
 }
 
-function summarizeModules(records, edges) {
-  const modules = new Map();
+function summarizeModules(records: FileRecord[], edges: EdgeRecord[]): ModuleSummary[] {
+  const modules = new Map<string, ModuleSummary>();
 
   for (const record of records) {
     const module = modules.get(record.module) ?? {
@@ -368,16 +381,19 @@ function summarizeModules(records, edges) {
     const from = records.find((record) => record.path === edge.from)?.module;
     const to = records.find((record) => record.path === edge.to)?.module;
     if (!from || !to || from === to) continue;
-    modules.get(from).outgoing += 1;
-    modules.get(to).incoming += 1;
+    const fromModule = modules.get(from);
+    const toModule = modules.get(to);
+    if (!fromModule || !toModule) continue;
+    fromModule.outgoing += 1;
+    toModule.incoming += 1;
   }
 
   return [...modules.values()].sort((a, b) => b.files - a.files || a.name.localeCompare(b.name));
 }
 
-function rankHotspots(records, edges) {
-  const incoming = new Map();
-  const outgoing = new Map();
+function rankHotspots(records: FileRecord[], edges: EdgeRecord[]): Hotspot[] {
+  const incoming = new Map<string, number>();
+  const outgoing = new Map<string, number>();
 
   for (const edge of edges) {
     outgoing.set(edge.from, (outgoing.get(edge.from) ?? 0) + 1);
@@ -404,7 +420,7 @@ function rankHotspots(records, edges) {
     .slice(0, 25);
 }
 
-function dedupeObjects(items) {
+function dedupeObjects<T>(items: T[]): T[] {
   const seen = new Set();
   return items.filter((item) => {
     const key = JSON.stringify(item);
@@ -414,6 +430,6 @@ function dedupeObjects(items) {
   });
 }
 
-function normalizePath(value) {
+function normalizePath(value: string): string {
   return value.split(path.sep).join("/");
 }

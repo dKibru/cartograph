@@ -5,6 +5,7 @@ import { createServer } from "node:http";
 import { scanRepo } from "./scanner.ts";
 import { renderMarkdown } from "./markdown.ts";
 import { renderHtml } from "./web.ts";
+import type { Atlas } from "./types.ts";
 
 const help = `cartograph
 
@@ -27,7 +28,7 @@ type CliOptions = {
   [key: string]: string | boolean | string[] | undefined;
 };
 
-export async function main(args) {
+export async function main(args: string[]): Promise<void> {
   const command = args[0] ?? "help";
 
   if (command === "help" || command === "--help" || command === "-h") {
@@ -65,11 +66,12 @@ export async function main(args) {
   }
 }
 
-function parseOptions(args): CliOptions {
+function parseOptions(args: string[]): CliOptions {
   const options: CliOptions = { positionals: [] };
 
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i];
+    if (!arg) continue;
     if (!arg.startsWith("--")) {
       options.positionals.push(arg);
       continue;
@@ -92,7 +94,7 @@ function parseOptions(args): CliOptions {
   return options;
 }
 
-async function serve(atlas, port) {
+async function serve(atlas: Atlas, port: number): Promise<void> {
   const html = renderHtml(atlas);
   const server = createServer((request, response) => {
     if (request.url === "/cartograph.json") {
