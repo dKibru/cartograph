@@ -20,14 +20,14 @@ Early MVP. The first scanner supports JavaScript and TypeScript repositories.
 ## Usage
 
 ```sh
-npx cartograph scan .
+bunx cartograph scan .
 ```
 
 Or from a local checkout:
 
 ```sh
-node ./bin/cartograph.js scan /path/to/repo
-node ./bin/cartograph.js serve /path/to/repo
+bun ./bin/cartograph.ts scan /path/to/repo
+bun ./bin/cartograph.ts serve /path/to/repo
 ```
 
 `scan` writes:

@@ -279,6 +279,7 @@ async function loadAliases(repoRoot) {
       const aliases = [];
 
       for (const [pattern, targets] of Object.entries(paths)) {
+        if (!Array.isArray(targets)) continue;
         for (const target of targets) {
           aliases.push({
             pattern,

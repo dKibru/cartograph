@@ -2,9 +2,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { createServer } from "node:http";
-import { scanRepo } from "./scanner.js";
-import { renderMarkdown } from "./markdown.js";
-import { renderHtml } from "./web.js";
+import { scanRepo } from "./scanner.ts";
+import { renderMarkdown } from "./markdown.ts";
+import { renderHtml } from "./web.ts";
 
 const help = `cartograph
 
@@ -18,6 +18,14 @@ Examples:
   cartograph scan .
   cartograph serve ~/Developer/my-app
 `;
+
+type CliOptions = {
+  positionals: string[];
+  out?: string;
+  port?: string;
+  quiet?: boolean;
+  [key: string]: string | boolean | string[] | undefined;
+};
 
 export async function main(args) {
   const command = args[0] ?? "help";
@@ -57,8 +65,8 @@ export async function main(args) {
   }
 }
 
-function parseOptions(args) {
-  const options = { positionals: [] };
+function parseOptions(args): CliOptions {
+  const options: CliOptions = { positionals: [] };
 
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i];
@@ -99,7 +107,7 @@ async function serve(atlas, port) {
 
   await new Promise((resolve, reject) => {
     server.once("error", reject);
-    server.listen(port, "127.0.0.1", resolve);
+    server.listen(port, "127.0.0.1", () => resolve(undefined));
   });
 
   console.log(`Cartograph is running at http://127.0.0.1:${port}`);

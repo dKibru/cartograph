@@ -237,11 +237,14 @@ function toGraph(atlas) {
 }
 
 function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, (char) => ({
+  const entities = {
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
     '"': "&quot;",
     "'": "&#39;"
-  }[char]));
+  };
+  return String(value).replace(/[&<>"']/g, (char) => ({
+    ...entities
+  }[char] ?? char));
 }

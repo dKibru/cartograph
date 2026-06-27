@@ -4,12 +4,13 @@
   "description": "Codebase sensemaking for AI-native developers.",
   "type": "module",
   "bin": {
-    "cartograph": "./bin/cartograph.js"
+    "cartograph": "./bin/cartograph.ts"
   },
   "scripts": {
-    "scan": "node ./bin/cartograph.js scan .",
-    "serve": "node ./bin/cartograph.js serve .",
-    "test": "node ./bin/cartograph.js scan . --out .cartograph-test --quiet"
+    "scan": "bun ./bin/cartograph.ts scan .",
+    "serve": "bun ./bin/cartograph.ts serve .",
+    "test": "bun ./bin/cartograph.ts scan . --out .cartograph-test --quiet",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "ai",
@@ -21,6 +22,11 @@
   "author": "Kibru Demeke",
   "license": "MIT",
   "engines": {
+    "bun": ">=1.3.0",
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.8.0"
   }
 }
