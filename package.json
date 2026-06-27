@@ -1,10 +1,28 @@
 {
-  "name": "cartograph",
+  "name": "@dkibru/cartograph",
   "version": "0.1.0",
   "description": "Codebase sensemaking for AI-native developers.",
   "type": "module",
+  "homepage": "https://github.com/dKibru/cartograph#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dKibru/cartograph.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dKibru/cartograph/issues"
+  },
   "bin": {
     "cartograph": "./bin/cartograph.ts"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE",
+    "tsconfig.json"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "scan": "bun ./bin/cartograph.ts scan .",

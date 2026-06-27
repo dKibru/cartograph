@@ -20,7 +20,7 @@ Early MVP. The first scanner supports JavaScript and TypeScript repositories.
 ## Usage
 
 ```sh
-bunx cartograph scan .
+bunx @dkibru/cartograph scan .
 ```
 
 Or from a local checkout:
